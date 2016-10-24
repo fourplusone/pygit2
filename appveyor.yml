@@ -40,9 +40,7 @@ build_script:
     cmake --build . --config Release --target install
     cd ..
     
-    IF "%GENERATOR%"=="Visual Studio 10 Win64" (
-      call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd"
-    )
+    IF "%GENERATOR%"=="Visual Studio 10 Win64" ( call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" )
     
     "%PYTHON%" setup.py bdist_wheel 
     "%PIP%" install .
