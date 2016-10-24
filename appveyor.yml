@@ -4,14 +4,6 @@ configuration: Release
 environment:
   matrix:
   - ARCH: 32
-    GENERATOR: 'Visual Studio 9 2008'
-    PYTHON: 'C:\Python27\python.exe'
-    PIP: 'C:\Python27\Scripts\pip.exe'
-  - ARCH: 64
-    GENERATOR: 'Visual Studio 9 2008 Win64'
-    PYTHON: 'C:\Python27-x64\python.exe'
-    PIP: 'C:\Python27-x64\Scripts\pip.exe'
-  - ARCH: 32
     GENERATOR: 'Visual Studio 10'
     PYTHON: 'C:\Python33\python.exe'
     PIP: 'C:\Python33\Scripts\pip.exe'
@@ -47,6 +39,10 @@ build_script:
     cmake -DSTDCALL=OFF -DBUILD_CLAR=OFF -DCMAKE_INSTALL_PREFIX="%LIBGIT2%" ../libgit2 -G "%GENERATOR%"
     cmake --build . --config Release --target install
     cd ..
+    
+    IF "%GENERATOR%" == "Visual Studio 10 Win64" (
+      call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd"
+    )
     
     "%PYTHON%" setup.py bdist_wheel 
     "%PIP%" install .
