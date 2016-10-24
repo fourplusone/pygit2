@@ -4,6 +4,10 @@ configuration: Release
 environment:
   matrix:
   - ARCH: 32
+    GENERATOR: 'Visual Studio 10'
+    PYTHON: 'C:\Python34\python.exe'
+    PIP: 'C:\Python34\Scripts\pip.exe'
+  - ARCH: 32
     GENERATOR: 'Visual Studio 11'
     PYTHON: 'C:\Python35\python.exe'
     PIP: 'C:\Python35\Scripts\pip.exe'
