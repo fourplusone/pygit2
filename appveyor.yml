@@ -47,7 +47,7 @@ build_script:
     IF "%GENERATOR%"=="Visual Studio 10 Win64" ( call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" )
     
     "%PYTHON%" setup.py bdist_wheel 
-    "%PIP%" install .
+    rem "%PIP%" install .
 test_script:
 - ps: |
     cp build\Release\git2.dll .
