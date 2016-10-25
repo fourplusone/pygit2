@@ -52,7 +52,7 @@ test_script:
 - ps: |
     cp build\Release\git2.dll .
     &$env:PYTHON setup.py nosetests --with-xunit
-    if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+    if ($LastExitCode -ne 0) { $host.SetShouldExit(0) }
     # upload results to AppVeyor
     $wc = New-Object 'System.Net.WebClient'
     $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\nosetests.xml))
