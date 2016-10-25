@@ -5,6 +5,10 @@ environment:
   matrix:
   - ARCH: 32
     GENERATOR: 'Visual Studio 10'
+    PYTHON: 'C:\Python27\python.exe'
+    PIP: 'C:\Python27\Scripts\pip.exe'
+  - ARCH: 32
+    GENERATOR: 'Visual Studio 10'
     PYTHON: 'C:\Python33\python.exe'
     PIP: 'C:\Python33\Scripts\pip.exe'
   - ARCH: 64
