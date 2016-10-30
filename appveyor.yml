@@ -5,27 +5,27 @@ environment:
   matrix:
   - GENERATOR: 'Visual Studio 10'
     PYTHON: 'C:\Python27\python.exe'
-    PIP: 'C:\Python27\Scripts\pip.exe'
+  - GENERATOR: 'Visual Studio 10 Win64'
+    PYTHON: 'C:\Python27-x64\python.exe'
+  - GENERATOR: 'Visual Studio 10'
+    PYTHON: 'C:\Python32\python.exe'
+  - GENERATOR: 'Visual Studio 10 Win64'
+    PYTHON: 'C:\Python32-x64\python.exe'
   - GENERATOR: 'Visual Studio 10'
     PYTHON: 'C:\Python33\python.exe'
-    PIP: 'C:\Python33\Scripts\pip.exe'
   - GENERATOR: 'Visual Studio 10 Win64'
     PYTHON: 'C:\Python33-x64\python.exe'
-    PIP: 'C:\Python33-x64\Scripts\pip.exe'
   - GENERATOR: 'Visual Studio 10'
     PYTHON: 'C:\Python34\python.exe'
-    PIP: 'C:\Python34\Scripts\pip.exe'
   - GENERATOR: 'Visual Studio 10 Win64'
     PYTHON: 'C:\Python34-x64\python.exe'
-    PIP: 'C:\Python34-x64\Scripts\pip.exe'
   - GENERATOR: 'Visual Studio 14'
     PYTHON: 'C:\Python35\python.exe'
-    PIP: 'C:\Python35\Scripts\pip.exe'
   - GENERATOR: 'Visual Studio 14 Win64'
     PYTHON: 'C:\Python35-x64\python.exe'
-    PIP: 'C:\Python35-x64\Scripts\pip.exe'
+
 init:
-- cmd: '%PIP% install -U pip nose wheel'
+- cmd: '%PYTHON% -m pip install -U nose wheel'
 build_script:
 - cmd: |
     set LIBGIT2=%APPVEYOR_BUILD_FOLDER%\build\libgit2
