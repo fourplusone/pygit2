@@ -312,7 +312,7 @@ class Index(object):
             self._conflicts = weakref.ref(conflicts)
             return conflicts
 
-        return self._conflicts
+        return self._conflicts()
 
 
 class IndexEntry(object):
