@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -83,8 +83,7 @@ py_str_borrow_c_str(PyObject **tvalue, PyObject *value, const char *encoding)
     }
 
     /* Type error */
-    PyErr_Format(PyExc_TypeError, "unexpected %.200s",
-                 Py_TYPE(value)->tp_name);
+    Error_type_error("unexpected %.200s", value);
     return NULL;
 }
 
@@ -94,7 +93,7 @@ py_str_borrow_c_str(PyObject **tvalue, PyObject *value, const char *encoding)
 PyObject *
 get_pylist_from_git_strarray(git_strarray *strarray)
 {
-    int index;
+    size_t index;
     PyObject *new_list;
 
     new_list = PyList_New(strarray->count);
@@ -161,40 +160,39 @@ on_error:
 static git_otype
 py_type_to_git_type(PyTypeObject *py_type)
 {
-    git_otype type = GIT_OBJ_BAD;
+    if (py_type == &CommitType)
+        return GIT_OBJ_COMMIT;
+    else if (py_type == &TreeType)
+        return GIT_OBJ_TREE;
+    else if (py_type == &BlobType)
+        return GIT_OBJ_BLOB;
+    else if (py_type == &TagType)
+        return GIT_OBJ_TAG;
 
-    if (py_type == &CommitType) {
-        type = GIT_OBJ_COMMIT;
-    } else if (py_type == &TreeType) {
-        type = GIT_OBJ_TREE;
-    } else if (py_type == &BlobType) {
-        type = GIT_OBJ_BLOB;
-    } else if (py_type == &TagType) {
-        type = GIT_OBJ_TAG;
-    }
-
-    return type;
+    PyErr_SetString(PyExc_ValueError, "invalid target type");
+    return GIT_OBJ_BAD; /* -1 */
 }
 
-int
-py_object_to_object_type(PyObject *py_type)
+git_otype
+py_object_to_otype(PyObject *py_type)
 {
-    int type = -1;
+    long value;
 
     if (py_type == Py_None)
         return GIT_OBJ_ANY;
 
-    if (PyLong_Check(py_type)) {
-        type = PyLong_AsLong(py_type);
-        if (type == -1 && PyErr_Occurred())
-            return -1;
-    } else if (PyType_Check(py_type)) {
-        type = py_type_to_git_type((PyTypeObject *) py_type);
+    if (PyInt_Check(py_type)) {
+        value = PyInt_AsLong(py_type);
+        if (value == -1 && PyErr_Occurred())
+            return GIT_OBJ_BAD;
+
+        /* TODO Check whether the value is a valid value */
+        return (git_otype)value;
     }
 
-    if (type == -1) {
-        PyErr_SetString(PyExc_ValueError, "invalid target type");
-    }
+    if (PyType_Check(py_type))
+        return py_type_to_git_type((PyTypeObject *) py_type);
 
-    return type;
+    PyErr_SetString(PyExc_ValueError, "invalid target type");
+    return GIT_OBJ_BAD; /* -1 */
 }

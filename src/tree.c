@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -54,7 +54,7 @@ PyDoc_STRVAR(TreeEntry_filemode__doc__, "Filemode.");
 PyObject *
 TreeEntry_filemode__get__(TreeEntry *self)
 {
-    return PyLong_FromLong(git_tree_entry_filemode(self->entry));
+    return PyInt_FromLong(git_tree_entry_filemode(self->entry));
 }
 
 
@@ -290,7 +290,7 @@ Tree_fix_index(Tree *self, PyObject *py_index)
     size_t len;
     long slen;
 
-    index = PyLong_AsLong(py_index);
+    index = PyInt_AsLong(py_index);
     if (PyErr_Occurred())
         return -1;
 
@@ -359,7 +359,7 @@ Tree_getitem(Tree *self, PyObject *value)
     int err;
 
     /* Case 1: integer */
-    if (PyLong_Check(value))
+    if (PyInt_Check(value))
         return Tree_getitem_by_index(self, value);
 
     /* Case 2: byte or text string */
@@ -388,15 +388,18 @@ PyDoc_STRVAR(Tree_diff_to_workdir__doc__,
   "\n"
   "Show the changes between the :py:class:`~pygit2.Tree` and the workdir.\n"
   "\n"
-  "Arguments:\n"
+  "Parameters:\n"
   "\n"
-  "flag: a GIT_DIFF_* constant.\n"
+  "flag\n"
+  "    A GIT_DIFF_* constant.\n"
   "\n"
-  "context_lines: the number of unchanged lines that define the boundary\n"
-  "   of a hunk (and to display before and after)\n"
+  "context_lines\n"
+  "    The number of unchanged lines that define the boundary of a hunk\n"
+  "    (and to display before and after).\n"
   "\n"
-  "interhunk_lines: the maximum number of unchanged lines between hunk\n"
-  "   boundaries before the hunks will be merged into a one.\n");
+  "interhunk_lines\n"
+  "    The maximum number of unchanged lines between hunk boundaries before\n"
+  "    the hunks will be merged into a one.\n");
 
 PyObject *
 Tree_diff_to_workdir(Tree *self, PyObject *args)
@@ -424,17 +427,21 @@ PyDoc_STRVAR(Tree_diff_to_index__doc__,
   "\n"
   "Show the changes between the index and a given :py:class:`~pygit2.Tree`.\n"
   "\n"
-  "Arguments:\n"
+  "Parameters:\n"
   "\n"
-  "tree: the :py:class:`~pygit2.Tree` to diff.\n"
+  "tree : :py:class:`~pygit2.Tree`\n"
+  "    The tree to diff.\n"
   "\n"
-  "flag: a GIT_DIFF_* constant.\n"
+  "flag\n"
+  "    A GIT_DIFF_* constant.\n"
   "\n"
-  "context_lines: the number of unchanged lines that define the boundary\n"
-  "   of a hunk (and to display before and after)\n"
+  "context_lines\n"
+  "    The number of unchanged lines that define the boundary of a hunk\n"
+  "    (and to display before and after).\n"
   "\n"
-  "interhunk_lines: the maximum number of unchanged lines between hunk\n"
-  "   boundaries before the hunks will be merged into a one.\n");
+  "interhunk_lines\n"
+  "    The maximum number of unchanged lines between hunk boundaries before\n"
+  "    the hunks will be merged into a one.\n");
 
 PyObject *
 Tree_diff_to_index(Tree *self, PyObject *args, PyObject *kwds)
@@ -490,22 +497,27 @@ Tree_diff_to_index(Tree *self, PyObject *args, PyObject *kwds)
 PyDoc_STRVAR(Tree_diff_to_tree__doc__,
   "diff_to_tree([tree, flags, context_lines, interhunk_lines, swap]) -> Diff\n"
   "\n"
-  "Show the changes between two trees\n"
+  "Show the changes between two trees.\n"
   "\n"
-  "Arguments:\n"
+  "Parameters:\n"
   "\n"
-  "tree: the :py:class:`~pygit2.Tree` to diff. If no tree is given the empty\n"
-  "   tree will be used instead.\n"
+  "tree: :py:class:`~pygit2.Tree`\n"
+  "    The tree to diff. If no tree is given the empty tree will be used\n"
+  "    instead.\n"
   "\n"
-  "flag: a GIT_DIFF_* constant.\n"
+  "flag\n"
+  "    A GIT_DIFF_* constant.\n"
   "\n"
-  "context_lines: the number of unchanged lines that define the boundary\n"
-  "   of a hunk (and to display before and after)\n"
+  "context_lines\n"
+  "    The number of unchanged lines that define the boundary of a hunk\n"
+  "    (and to display before and after).\n"
   "\n"
-  "interhunk_lines: the maximum number of unchanged lines between hunk\n"
-  "   boundaries before the hunks will be merged into a one.\n"
+  "interhunk_lines\n"
+  "    The maximum number of unchanged lines between hunk boundaries before\n"
+  "    the hunks will be merged into a one.\n"
   "\n"
-  "swap: instead of diffing a to b. Diff b to a.\n");
+  "swap\n"
+  "    Instead of diffing a to b. Diff b to a.\n");
 
 PyObject *
 Tree_diff_to_tree(Tree *self, PyObject *args, PyObject *kwds)

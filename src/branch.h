@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -34,6 +34,7 @@
 
 PyObject* Branch_delete(Branch *self, PyObject *args);
 PyObject* Branch_is_head(Branch *self);
+PyObject* Branch_is_checked_out(Branch *self);
 PyObject* Branch_move(Branch *self, PyObject *args);
 
 PyObject* wrap_branch(git_reference *c_reference, Repository *repo);

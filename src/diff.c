@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -587,7 +587,7 @@ PyDoc_STRVAR(DiffStats_insertions__doc__, "Total number of insertions");
 PyObject *
 DiffStats_insertions__get__(DiffStats *self)
 {
-    return PyLong_FromSize_t(git_diff_stats_insertions(self->stats));
+    return PyInt_FromSize_t(git_diff_stats_insertions(self->stats));
 }
 
 PyDoc_STRVAR(DiffStats_deletions__doc__, "Total number of deletions");
@@ -595,7 +595,7 @@ PyDoc_STRVAR(DiffStats_deletions__doc__, "Total number of deletions");
 PyObject *
 DiffStats_deletions__get__(DiffStats *self)
 {
-    return PyLong_FromSize_t(git_diff_stats_deletions(self->stats));
+    return PyInt_FromSize_t(git_diff_stats_deletions(self->stats));
 }
 
 PyDoc_STRVAR(DiffStats_files_changed__doc__, "Total number of files changed");
@@ -603,18 +603,20 @@ PyDoc_STRVAR(DiffStats_files_changed__doc__, "Total number of files changed");
 PyObject *
 DiffStats_files_changed__get__(DiffStats *self)
 {
-    return PyLong_FromSize_t(git_diff_stats_files_changed(self->stats));
+    return PyInt_FromSize_t(git_diff_stats_files_changed(self->stats));
 }
 
 PyDoc_STRVAR(DiffStats_format__doc__,
-    "format(format, width)-> str\n"
+    "format(format, width)\n"
     "\n"
-    "Format the stats as a string\n"
+    "Format the stats as a string.\n"
     "\n"
-    "Arguments:\n"
+    "Returns: str.\n"
+    "\n"
+    "Parameters:\n"
     "\n"
     "format\n"
-    "    The format to use. A pygit2.GIT_DIFF_STATS_* constant\n"
+    "    The format to use. A pygit2.GIT_DIFF_STATS_* constant.\n"
     "\n"
     "width\n"
     "    The width of the output. The output will be scaled to fit.");
@@ -805,10 +807,10 @@ Diff_getitem(Diff *self, PyObject *value)
 {
     size_t i;
 
-    if (!PyLong_Check(value))
-        return NULL;
+    if (!PyInt_Check(value))
+        return NULL; /* FIXME Raise error */
 
-    i = PyLong_AsUnsignedLong(value);
+    i = PyInt_AsSize_t(value);
     return diff_get_patch_byindex(self->diff, i);
 }
 

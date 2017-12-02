@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -97,7 +97,7 @@ PyDoc_STRVAR(Object_type__doc__,
 PyObject *
 Object_type__get__(Object *self)
 {
-    return PyLong_FromLong(git_object_type(self->obj));
+    return PyInt_FromLong(git_object_type(self->obj));
 }
 
 PyDoc_STRVAR(Object__pointer__doc__, "Get the object's pointer. For internal use only.");
@@ -143,14 +143,15 @@ PyDoc_STRVAR(Object_peel__doc__,
 PyObject *
 Object_peel(Object *self, PyObject *py_type)
 {
-    int type = -1, err;
+    int err;
+    git_otype otype;
     git_object *peeled;
 
-    type = py_object_to_object_type(py_type);
-    if (type == -1)
+    otype = py_object_to_otype(py_type);
+    if (otype == GIT_OBJ_BAD)
         return NULL;
 
-    err = git_object_peel(&peeled, self->obj, (git_otype)type);
+    err = git_object_peel(&peeled, self->obj, otype);
     if (err < 0)
         return Error_set(err);
 

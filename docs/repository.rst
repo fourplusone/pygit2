@@ -54,8 +54,8 @@ The Repository class
      >>> repo = Repository('pygit2/.git')
 
 The API of the Repository class is quite large. Since this documentation is
-orgaized by features, the related bits are explained in the related chapters,
-for instance the :py:meth:`pygit2.Repository.checkout` method are explained in
+organized by features, the related bits are explained in the related chapters,
+for instance the :py:meth:`pygit2.Repository.checkout` method is explained in
 the Checkout section.
 
 Below there are some general attributes and methods:
@@ -67,10 +67,12 @@ Below there are some general attributes and methods:
 .. autoattribute:: pygit2.Repository.default_signature
 .. automethod:: pygit2.Repository.read
 .. automethod:: pygit2.Repository.write
-.. automethod:: pygit2.Repository.reset
-.. automethod:: pygit2.Repository.state_cleanup
-.. automethod:: pygit2.Repository.write_archive
 .. automethod:: pygit2.Repository.ahead_behind
+.. automethod:: pygit2.Repository.create_reference
 .. automethod:: pygit2.Repository.describe
 .. automethod:: pygit2.Repository.path_is_ignored
-.. automethod:: pygit2.Repository.create_reference
+.. automethod:: pygit2.Repository.reset
+.. automethod:: pygit2.Repository.revert_commit
+.. automethod:: pygit2.Repository.state_cleanup
+.. automethod:: pygit2.Repository.write_archive
+.. automethod:: pygit2.Repository.free

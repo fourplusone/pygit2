@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
-# Copyright 2010-2015 The pygit2 contributors
+# Copyright 2010-2017 The pygit2 contributors
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2,
@@ -43,7 +43,7 @@ import six
 
 if six.PY2:
     from urllib import pathname2url
-    
+
 if six.PY3:
     from urllib.request import pathname2url
 
@@ -422,6 +422,41 @@ class RepositoryTest_II(utils.RepoTestCase):
         self.assertTrue("hola mundo\n" in diff.patch)
         self.assertTrue("bonjour le monde\n" in diff.patch)
 
+    def test_stash(self):
+        # some changes to working dir
+        with open(os.path.join(self.repo.workdir, 'hello.txt'), 'w') as f:
+            f.write('new content')
+
+        sig = pygit2.Signature('Stasher', 'stasher@example.com')
+        self.repo.stash(sig, include_untracked=True)
+        self.assertFalse('hello.txt' in self.repo.status())
+        self.repo.stash_apply()
+        self.assertTrue('hello.txt' in self.repo.status())
+        self.repo.stash_drop()
+        self.assertRaises(KeyError, self.repo.stash_pop)
+
+    def test_revert(self):
+        master = self.repo.head.peel()
+        commit_to_revert = self.repo['4ec4389a8068641da2d6578db0419484972284c8']
+        parent = commit_to_revert.parents[0]
+        commit_diff_stats = (
+            parent.tree.diff_to_tree(commit_to_revert.tree).stats
+        )
+
+        revert_index = self.repo.revert_commit(commit_to_revert, master)
+        revert_diff_stats = revert_index.diff_to_tree(master.tree).stats
+
+        self.assertEqual(
+            revert_diff_stats.insertions, commit_diff_stats.deletions
+        )
+        self.assertEqual(
+            revert_diff_stats.deletions, commit_diff_stats.insertions
+        )
+        self.assertEqual(
+            revert_diff_stats.files_changed, commit_diff_stats.files_changed
+        )
+
+
 class RepositorySignatureTest(utils.RepoTestCase):
 
     def test_default_signature(self):
@@ -441,7 +476,7 @@ class NewRepositoryTest(utils.NoRepoTestCase):
         oid = repo.write(GIT_OBJ_BLOB, "Test")
         self.assertEqual(type(oid), Oid)
 
-        assert os.path.exists(os.path.join(self._temp_dir, '.git'))
+        self.assertTrue(os.path.exists(os.path.join(self._temp_dir, '.git')))
 
 
 class InitRepositoryTest(utils.NoRepoTestCase):
@@ -520,7 +555,7 @@ class CloneRepositoryTest(utils.NoRepoTestCase):
         src_repo_relpath = "./test/data/testrepo.git/"
         repo_path = os.path.join(self._temp_dir, "clone-into")
         url = pathname2url(os.path.realpath(src_repo_relpath))
-        
+
         if url.startswith('///'):
             url = 'file:' + url
         else:
@@ -538,6 +573,7 @@ class CloneRepositoryTest(utils.NoRepoTestCase):
         self.assertTrue('refs/remotes/custom_remote/master' in repo.listall_references())
         self.assertIsNotNone(repo.remotes["custom_remote"])
 
+    @unittest.skipIf(utils.no_network(), "Requires network")
     def test_clone_with_credentials(self):
         repo = clone_repository(
             "https://bitbucket.org/libgit2/testgitrepository.git",

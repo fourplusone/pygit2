@@ -4,15 +4,24 @@ References
 
 .. contents::
 
-.. automethod:: pygit2.Repository.listall_reference_objects
-.. automethod:: pygit2.Repository.listall_references
-.. automethod:: pygit2.Repository.lookup_reference
+.. autoclass:: pygit2.repository.References
+   :members:
+   :undoc-members:
+   :special-members: __getitem__, __iter__, __contains__
+
 
 Example::
 
-    >>> all_refs = repo.listall_references()
+    >>> all_refs = list(repo.references)
+
     >>> master_ref = repo.lookup_reference("refs/heads/master")
-    >>> commit = master_ref.get_object() # or repo[master_ref.target]
+    >>> commit = master_ref.peel() # or repo[master_ref.target]
+
+    # Create a reference
+    >>> ref = repo.references.create('refs/tags/version1', LAST_COMMIT)
+
+    # Delete a reference
+    >>> repo.references.delete('refs/tags/version1')
 
 
 The Reference type
@@ -69,28 +78,33 @@ Branches
 Branches inherit from References, and additionally provide specialized
 accessors for some unique features.
 
-.. automethod:: pygit2.Repository.listall_branches
-.. automethod:: pygit2.Repository.lookup_branch
-.. automethod:: pygit2.Repository.create_branch
+.. autoclass:: pygit2.repository.Branches
+   :members:
+   :undoc-members:
+   :special-members: __getitem__, __iter__, __contains__
 
 Example::
 
-    >>> local_branches = repo.listall_branches()
-    >>> # equivalent to
-    >>> local_branches = repo.listall_branches(pygit2.GIT_BRANCH_LOCAL)
+    >>> # Listing all branches
+    >>> branches_list = list(repo.branches)
+    >>> # Local only
+    >>> local_branches = list(repo.branches.local)
+    >>> # Remote only
+    >>> remote_branches = list(repo.branches.remote)
 
-    >>> remote_branches = repo.listall_branches(pygit2.GIT_BRANCH_REMOTE)
+    >>> # Get a branch
+    >>> branch = repo.branches['master']
+    >>> other_branch = repo.branches['does-not-exist']  # Will raise a KeyError
+    >>> other_branch = repo.branches.get('does-not-exist')  # Returns None
 
-    >>> all_branches = repo.listall_branches(pygit2.GIT_BRANCH_REMOTE |
-                                             pygit2.GIT_BRANCH_LOCAL)
+    >>> remote_branch = repo.branches.remote['upstream/feature']
 
-    >>> master_branch = repo.lookup_branch('master')
-    >>> # equivalent to
-    >>> master_branch = repo.lookup_branch('master',
-                                           pygit2.GIT_BRANCH_LOCAL)
+    >>> # Create a local branch
+    >>> new_branch = repo.branches.local.create('new-branch')
 
-    >>> remote_branch = repo.lookup_branch('upstream/feature',
-                                           pygit2.GIT_BRANCH_REMOTE)
+    >>> And delete it
+    >>> repo.branches.delete('new-branch')
+
 
 The Branch type
 ====================
@@ -99,17 +113,19 @@ The Branch type
 .. autoattribute:: pygit2.Branch.remote_name
 .. autoattribute:: pygit2.Branch.upstream
 .. autoattribute:: pygit2.Branch.upstream_name
-
 .. automethod:: pygit2.Branch.rename
 .. automethod:: pygit2.Branch.delete
 .. automethod:: pygit2.Branch.is_head
+.. automethod:: pygit2.Branch.is_checked_out
 
 The reference log
 ====================
 
 Example::
 
-    >>> head = repo.lookup_reference('refs/heads/master')
+    >>> head = repo.references.get('refs/heads/master')  # Returns None if not found
+    >>> # Almost equivalent to
+    >>> head = repo.references['refs/heads/master']  # Raises KeyError if not found
     >>> for entry in head.log():
     ...     print(entry.message)
 

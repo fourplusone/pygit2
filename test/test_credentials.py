@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
-# Copyright 2010-2015 The pygit2 contributors
+# Copyright 2010-2017 The pygit2 contributors
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2,
@@ -31,8 +31,7 @@
 import unittest
 import pygit2
 from pygit2 import GIT_CREDTYPE_USERPASS_PLAINTEXT
-from pygit2 import UserPass, Keypair, KeypairFromAgent
-from pygit2 import UserPass, Keypair
+from pygit2 import Username, UserPass, Keypair, KeypairFromAgent
 from . import utils
 
 REMOTE_NAME = 'origin'
@@ -45,6 +44,12 @@ REMOTE_REPO_BYTES = 2758
 ORIGIN_REFSPEC = '+refs/heads/*:refs/remotes/origin/*'
 
 class CredentialCreateTest(utils.NoRepoTestCase):
+    def test_username(self):
+        username = "git"
+
+        cred = Username(username)
+        self.assertEqual((username,), cred.credential_tuple)
+
     def test_userpass(self):
         username = "git"
         password = "sekkrit"
@@ -81,6 +86,7 @@ class CredentialCallback(utils.RepoTestCase):
 
         self.assertRaises(Exception, lambda: remote.fetch(callbacks=MyCallbacks()))
 
+    @unittest.skipIf(utils.no_network(), "Requires network")
     def test_bad_cred_type(self):
         class MyCallbacks(pygit2.RemoteCallbacks):
             @staticmethod
@@ -94,6 +100,7 @@ class CredentialCallback(utils.RepoTestCase):
 
 class CallableCredentialTest(utils.RepoTestCase):
 
+    @unittest.skipIf(utils.no_network(), "Requires network")
     def test_user_pass(self):
         credentials = UserPass("libgit2", "libgit2")
         callbacks = pygit2.RemoteCallbacks(credentials=credentials)

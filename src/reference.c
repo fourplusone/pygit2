@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -234,12 +234,13 @@ PyDoc_STRVAR(Reference_set_target__doc__,
     "\n"
     "Update the reference using the given signature and message.\n"
     "These will be used to fill the reflog entry which will be created\n"
-    "as a result of this update\n"
+    "as a result of this update.\n"
     "\n"
-    "Arguments:\n"
+    "Parameters:\n"
     "\n"
     "target\n"
     "    The new target for this reference\n"
+    "\n"
     "message\n"
     "    Message to use for the reflog.\n");
 
@@ -325,7 +326,7 @@ Reference_type__get__(Reference *self)
 
     CHECK_REFERENCE(self);
     c_type = git_reference_type(self->reference);
-    return PyLong_FromLong(c_type);
+    return PyInt_FromLong(c_type);
 }
 
 
@@ -379,7 +380,8 @@ PyDoc_STRVAR(Reference_peel__doc__,
 PyObject *
 Reference_peel(Reference *self, PyObject *args)
 {
-    int err, type;
+    int err;
+    git_otype otype;
     git_object *obj;
     PyObject *py_type = Py_None;
 
@@ -388,11 +390,11 @@ Reference_peel(Reference *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "|O", &py_type))
         return NULL;
 
-    type = py_object_to_object_type(py_type);
-    if (type == -1)
+    otype = py_object_to_otype(py_type);
+    if (otype == GIT_OBJ_BAD)
         return NULL;
 
-    err = git_reference_peel(&obj, self->reference, type);
+    err = git_reference_peel(&obj, self->reference, otype);
     if (err < 0)
         return Error_set(err);
 

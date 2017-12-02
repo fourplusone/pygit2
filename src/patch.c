@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -35,6 +35,7 @@
 #include "utils.h"
 
 extern PyTypeObject DiffHunkType;
+extern PyTypeObject BlobType;
 PyTypeObject PatchType;
 
 
@@ -103,6 +104,107 @@ Patch_line_stats__get__(Patch *self)
     return Py_BuildValue("III", context, additions, deletions);
 }
 
+PyDoc_STRVAR(Patch_create_from__doc__,
+    "Create a patch from blobs, buffers, or a blob and a buffer");
+
+static PyObject *
+Patch_create_from(PyObject *self, PyObject *args)
+{
+  /* A generic wrapper around
+   * git_patch_from_blob_and_buffer
+   * git_patch_from_buffers
+   * git_patch_from_blobs
+   */
+  git_diff_options opts = GIT_DIFF_OPTIONS_INIT;
+  git_patch *patch;
+  char *old_as_path = NULL, *new_as_path = NULL;
+  PyObject *oldobj = NULL, *newobj = NULL;
+  Blob *oldblob = NULL, *newblob = NULL;
+  const char *oldbuf = NULL, *newbuf = NULL;
+  Py_ssize_t oldbuflen, newbuflen;
+  int err;
+
+  if (!PyArg_ParseTuple(args, "OzOz|I", &oldobj, &old_as_path, &newobj,
+                        &new_as_path, &opts.flags))
+    return NULL;
+
+  if (oldobj != Py_None && PyObject_TypeCheck(oldobj, &BlobType))
+  {
+    /* The old object exists and is a blob */
+    if (!PyArg_Parse(oldobj, "O!", &BlobType, &oldblob))
+      return NULL;
+
+    if (newobj != Py_None && PyObject_TypeCheck(newobj, &BlobType))
+    {
+      /* The new object exists and is a blob */
+      if (!PyArg_Parse(newobj, "O!", &BlobType, &newblob))
+        return NULL;
+
+      err = git_patch_from_blobs(&patch, oldblob->blob, old_as_path,
+                                 newblob->blob, new_as_path, &opts);
+    }
+    else {
+      /* The new object does not exist or is a buffer */
+      if (!PyArg_Parse(newobj, "z#", &newbuf, &newbuflen))
+        return NULL;
+
+      err = git_patch_from_blob_and_buffer(&patch, oldblob->blob, old_as_path,
+                                           newbuf, newbuflen, new_as_path,
+                                           &opts);
+    }
+  }
+  else
+  {
+    /* The old object does exist and is a buffer */
+    if (!PyArg_Parse(oldobj, "z#", &oldbuf, &oldbuflen))
+      return NULL;
+
+    if (!PyArg_Parse(newobj, "z#", &newbuf, &newbuflen))
+      return NULL;
+
+    err = git_patch_from_buffers(&patch, oldbuf, oldbuflen, old_as_path,
+                                 newbuf, newbuflen, new_as_path, &opts);
+  }
+  
+  if (err < 0)
+    return Error_set(err);
+
+  return wrap_patch(patch);
+    
+}
+
+
+PyDoc_STRVAR(Patch_patch__doc__,
+    "Patch diff string. Can be None in some cases, such as empty commits.");
+
+PyObject *
+Patch_patch__get__(Patch *self)
+{
+  git_buf buf = {NULL};
+  int err = GIT_ERROR;
+  PyObject *py_patch = NULL;
+
+  err = git_patch_to_buf(&buf, self->patch);
+
+  if (!self->patch)
+      Py_RETURN_NONE;
+
+  if (err < 0)
+    goto cleanup;
+
+  py_patch = to_unicode(buf.ptr, NULL, NULL);
+  git_buf_free(&buf);
+
+cleanup:
+    git_buf_free(&buf);
+    return (err < 0) ? Error_set(err) : py_patch;
+}
+
+PyMethodDef Patch_methods[] = {
+    {"create_from", (PyCFunction) Patch_create_from, METH_VARARGS | METH_STATIC, Patch_create_from__doc__},
+    {NULL}
+};
+
 PyMemberDef Patch_members[] = {
     MEMBER(Patch, hunks, T_OBJECT, "hunks"),
     {NULL}
@@ -110,6 +212,7 @@ PyMemberDef Patch_members[] = {
 
 PyGetSetDef Patch_getseters[] = {
     GETTER(Patch, delta),
+    GETTER(Patch, patch),
     GETTER(Patch, line_stats),
     {NULL}
 };
@@ -144,7 +247,7 @@ PyTypeObject PatchType = {
     0,                                         /* tp_weaklistoffset */
     0,                                         /* tp_iter           */
     0,                                         /* tp_iternext       */
-    0,                                         /* tp_methods        */
+    Patch_methods,                             /* tp_methods        */
     Patch_members,                             /* tp_members        */
     Patch_getseters,                           /* tp_getset         */
     0,                                         /* tp_base           */

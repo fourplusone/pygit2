@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -144,7 +144,44 @@ hash(PyObject *self, PyObject *args)
 }
 
 
+PyDoc_STRVAR(init_file_backend__doc__,
+  "init_file_backend(path) -> object\n"
+  "\n"
+  "open repo backend given path.");
+PyObject *
+init_file_backend(PyObject *self, PyObject *args)
+{
+    const char* path = NULL;
+    int err = GIT_OK;
+    git_repository *repository = NULL;
+    if (!PyArg_ParseTuple(args, "s", &path)) {
+        return NULL;
+    }
+
+    err = git_repository_open(&repository, path);
+    if (err < 0) {
+        Error_set_str(err, path);
+        goto cleanup;
+    }
+
+    return PyCapsule_New(repository, "backend", NULL);
+
+cleanup:
+    if (repository) {
+        git_repository_free(repository);
+    }
+
+    if (err == GIT_ENOTFOUND) {
+        PyErr_Format(GitError, "Repository not found at %s", path);
+    }
+
+    return NULL;
+}
+
+
 PyMethodDef module_methods[] = {
+    {"init_file_backend", init_file_backend, METH_VARARGS,
+    init_file_backend__doc__},
     {"discover_repository", discover_repository, METH_VARARGS,
      discover_repository__doc__},
     {"hashfile", hashfile, METH_VARARGS, hashfile__doc__},
@@ -170,6 +207,12 @@ moduleinit(PyObject* m)
     ADD_CONSTANT_INT(m, GIT_OPT_SET_SEARCH_PATH);
     ADD_CONSTANT_INT(m, GIT_OPT_GET_MWINDOW_SIZE);
     ADD_CONSTANT_INT(m, GIT_OPT_SET_MWINDOW_SIZE);
+    ADD_CONSTANT_INT(m, GIT_OPT_GET_MWINDOW_MAPPED_LIMIT);
+    ADD_CONSTANT_INT(m, GIT_OPT_SET_MWINDOW_MAPPED_LIMIT);
+    ADD_CONSTANT_INT(m, GIT_OPT_SET_CACHE_OBJECT_LIMIT);
+    ADD_CONSTANT_INT(m, GIT_OPT_GET_CACHED_MEMORY);
+    ADD_CONSTANT_INT(m, GIT_OPT_ENABLE_CACHING);
+    ADD_CONSTANT_INT(m, GIT_OPT_SET_CACHE_MAX_SIZE);
 
     /* Errors */
     GitError = PyErr_NewException("_pygit2.GitError", NULL, NULL);
@@ -260,6 +303,7 @@ moduleinit(PyObject* m)
     ADD_TYPE(m, Branch)
     ADD_CONSTANT_INT(m, GIT_BRANCH_LOCAL)
     ADD_CONSTANT_INT(m, GIT_BRANCH_REMOTE)
+    ADD_CONSTANT_INT(m, GIT_BRANCH_ALL)
 
     /*
      * Index & Working copy
@@ -385,6 +429,14 @@ moduleinit(PyObject* m)
     ADD_CONSTANT_INT(m, GIT_DESCRIBE_DEFAULT);
     ADD_CONSTANT_INT(m, GIT_DESCRIBE_TAGS);
     ADD_CONSTANT_INT(m, GIT_DESCRIBE_ALL);
+
+    /* Stash */
+    ADD_CONSTANT_INT(m, GIT_STASH_DEFAULT);
+    ADD_CONSTANT_INT(m, GIT_STASH_KEEP_INDEX);
+    ADD_CONSTANT_INT(m, GIT_STASH_INCLUDE_UNTRACKED);
+    ADD_CONSTANT_INT(m, GIT_STASH_INCLUDE_IGNORED);
+    ADD_CONSTANT_INT(m, GIT_STASH_APPLY_DEFAULT);
+    ADD_CONSTANT_INT(m, GIT_STASH_APPLY_REINSTATE_INDEX);
 
     /* Global initialization of libgit2 */
     git_libgit2_init();

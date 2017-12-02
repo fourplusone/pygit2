@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -37,5 +37,6 @@ PyObject* Error_set(int err);
 PyObject* Error_set_exc(PyObject* exception);
 PyObject* Error_set_str(int err, const char *str);
 PyObject* Error_set_oid(int err, const git_oid *oid, size_t len);
+PyObject* Error_type_error(const char *format, PyObject *value);
 
 #endif

@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
-# Copyright 2010-2015 The pygit2 contributors
+# Copyright 2010-2017 The pygit2 contributors
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2,
@@ -97,7 +97,7 @@ class ConfigTest(utils.RepoTestCase):
 
         self.assertRaises(TypeError, lambda: config[()])
         self.assertRaises(TypeError, lambda: config[-4])
-        self.assertRaisesWithArg(ValueError, "Invalid config item name 'abc'",
+        self.assertRaisesWithArg(ValueError, "invalid config item name 'abc'",
                                  lambda: config['abc'])
         self.assertRaisesWithArg(KeyError, 'abc.def',
                                  lambda: config['abc.def'])

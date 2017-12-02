@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
-# Copyright 2010-2015 The pygit2 contributors
+# Copyright 2010-2017 The pygit2 contributors
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2,
@@ -31,6 +31,7 @@
 import unittest
 import pygit2
 import sys
+import os.path
 from pygit2 import Oid
 from . import utils
 import gc
@@ -229,6 +230,28 @@ class EmptyRepositoryTest(utils.EmptyRepoTestCase):
         callbacks = MyCallbacks(self, tips)
         remote.fetch(callbacks=callbacks)
         self.assertTrue(callbacks.i > 0)
+
+
+class PruneTestCase(utils.RepoTestCase):
+    def setUp(self):
+        super(PruneTestCase, self).setUp()
+        cloned_repo_path = os.path.join(self.repo_ctxtmgr.temp_dir, 'test_remote_prune')
+        pygit2.clone_repository(self.repo_path, cloned_repo_path)
+        self.clone_repo = pygit2.Repository(cloned_repo_path)
+        self.repo.branches.delete('i18n')
+
+    def test_fetch_remote_default(self):
+        self.clone_repo.remotes[0].fetch()
+        self.assertIn('origin/i18n', self.clone_repo.branches)
+
+    def test_fetch_remote_prune(self):
+        self.clone_repo.remotes[0].fetch(prune=pygit2.GIT_FETCH_PRUNE)
+        self.assertNotIn('origin/i18n', self.clone_repo.branches)
+
+    def test_fetch_no_prune(self):
+        self.clone_repo.remotes[0].fetch(prune=pygit2.GIT_FETCH_NO_PRUNE)
+        self.assertIn('origin/i18n', self.clone_repo.branches)
+
 
 class PushTestCase(unittest.TestCase):
     def setUp(self):

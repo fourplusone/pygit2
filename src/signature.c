@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -96,10 +96,10 @@ Signature_dealloc(Signature *self)
 
 PyDoc_STRVAR(Signature__pointer__doc__, "Get the signature's pointer. For internal use only.");
 PyObject *
-Signature__pointer__get__(Repository *self)
+Signature__pointer__get__(Signature *self)
 {
     /* Bytes means a raw buffer */
-    return PyBytes_FromStringAndSize((char *) &self->repo, sizeof(git_repository *));
+    return PyBytes_FromStringAndSize((char *) &self->signature, sizeof(git_signature *));
 }
 
 PyDoc_STRVAR(Signature__encoding__doc__, "Encoding.");
@@ -158,7 +158,7 @@ PyDoc_STRVAR(Signature_time__doc__, "Unix time.");
 PyObject *
 Signature_time__get__(Signature *self)
 {
-    return PyLong_FromLongLong(self->signature->when.time);
+    return PyInt_FromLongLong(self->signature->when.time);
 }
 
 
@@ -167,7 +167,7 @@ PyDoc_STRVAR(Signature_offset__doc__, "Offset from UTC in minutes.");
 PyObject *
 Signature_offset__get__(Signature *self)
 {
-    return PyLong_FromLong(self->signature->when.offset);
+    return PyInt_FromLong(self->signature->when.offset);
 }
 
 PyGetSetDef Signature_getseters[] = {

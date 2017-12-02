@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -38,6 +38,7 @@
 #include "branch.h"
 #include "signature.h"
 #include <git2/odb_backend.h>
+#include <git2/sys/repository.h>
 
 extern PyObject *GitError;
 
@@ -88,8 +89,7 @@ wrap_repository(git_repository *c_repo)
 int
 Repository_init(Repository *self, PyObject *args, PyObject *kwds)
 {
-    char *path;
-    int err;
+    PyObject *backend;
 
     if (kwds && PyDict_Size(kwds) > 0) {
         PyErr_SetString(PyExc_TypeError,
@@ -97,15 +97,16 @@ Repository_init(Repository *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    if (!PyArg_ParseTuple(args, "s", &path))
-        return -1;
-
-    err = git_repository_open(&self->repo, path);
-    if (err < 0) {
-        Error_set_str(err, path);
+    if (!PyArg_ParseTuple(args, "O", &backend)) {
         return -1;
     }
 
+    self->repo = PyCapsule_GetPointer(backend, "backend");
+    if (self->repo == NULL) {
+        PyErr_SetString(PyExc_TypeError,
+                        "Repository unable to unpack backend.");
+        return -1;
+    }
     self->owned = 1;
     self->config = NULL;
     self->index = NULL;
@@ -736,9 +737,9 @@ PyDoc_STRVAR(Repository_walk__doc__,
   "  >>> from pygit2 import GIT_SORT_TOPOLOGICAL, GIT_SORT_REVERSE\n"
   "  >>> repo = Repository('.git')\n"
   "  >>> for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL):\n"
-  "  ...    print commit.message\n"
+  "  ...    print(commit.message)\n"
   "  >>> for commit in repo.walk(repo.head.target, GIT_SORT_TOPOLOGICAL | GIT_SORT_REVERSE):\n"
-  "  ...    print commit.message\n"
+  "  ...    print(commit.message)\n"
   "  >>>\n");
 
 PyObject *
@@ -862,38 +863,17 @@ Repository_create_blob_fromdisk(Repository *self, PyObject *args)
 }
 
 
+#define BUFSIZE 4096
+
 PyDoc_STRVAR(Repository_create_blob_fromiobase__doc__,
     "create_blob_fromiobase(io.IOBase) -> Oid\n"
     "\n"
     "Create a new blob from an IOBase object.");
 
-
-int read_chunk(char *content, size_t max_length, void *payload)
-{
-    PyObject   *py_file;
-    PyObject   *py_bytes;
-    char       *bytes;
-    Py_ssize_t  size;
-
-    py_file  = (PyObject *)payload;
-    py_bytes = PyObject_CallMethod(py_file, "read", "i", max_length);
-    if (!py_bytes)
-        return -1;
-
-    size = 0;
-    if (py_bytes != Py_None) {
-        bytes = PyBytes_AsString(py_bytes);
-        size  = PyBytes_Size(py_bytes);
-        memcpy(content, bytes, size);
-    }
-
-    Py_DECREF(py_bytes);
-    return size;
-}
-
 PyObject *
 Repository_create_blob_fromiobase(Repository *self, PyObject *py_file)
 {
+    git_writestream *stream;
     git_oid   oid;
     PyObject *py_is_readable;
     int       is_readable;
@@ -915,8 +895,47 @@ Repository_create_blob_fromiobase(Repository *self, PyObject *py_file)
         return NULL;
     }
 
-    err = git_blob_create_fromchunks(&oid, self->repo, NULL, &read_chunk,
-                                     py_file);
+    err = git_blob_create_fromstream(&stream, self->repo, NULL);
+    if (err < 0)
+        return Error_set(err);
+
+    for (;;) {
+        PyObject *py_bytes;
+        char *bytes;
+        Py_ssize_t size;
+
+        py_bytes = PyObject_CallMethod(py_file, "read", "i", 4096);
+        if (!py_bytes)
+            return NULL;
+
+        if (py_bytes == Py_None) {
+            Py_DECREF(py_bytes);
+            goto cleanup;
+        }
+
+        if (PyBytes_AsStringAndSize(py_bytes, &bytes, &size)) {
+            Py_DECREF(py_bytes);
+            return NULL;
+        }
+
+        if (size == 0) {
+            Py_DECREF(py_bytes);
+            break;
+        }
+
+        err = stream->write(stream, bytes, size);
+        Py_DECREF(py_bytes);
+        if (err < 0)
+            goto cleanup;
+    }
+
+cleanup:
+    if (err < 0) {
+        stream->free(stream);
+        return Error_set(err);
+    }
+
+    err = git_blob_create_fromstream_commit(&oid, stream);
     if (err < 0)
         return Error_set(err);
 
@@ -1051,11 +1070,13 @@ Repository_create_tag(Repository *self, PyObject *args)
 
 
 PyDoc_STRVAR(Repository_create_branch__doc__,
-  "create_branch(name, commit, force=False) -> Branch\n"
+  "create_branch(name, commit, force=False)\n"
   "\n"
   "Create a new branch \"name\" which points to a commit.\n"
   "\n"
-  "Arguments:\n"
+  "Returns: Branch\n"
+  "\n"
+  "Parameters:\n"
   "\n"
   "force\n"
   "    If True branches will be overridden, otherwise (the default) an\n"
@@ -1269,6 +1290,141 @@ Repository_listall_submodules(Repository *self, PyObject *args)
 }
 
 
+PyDoc_STRVAR(Repository_init_submodules__doc__,
+    "init_submodule(submodules=None, overwrite=False)\n"
+    "\n"
+    "Initialize all submodules in repository.\n"
+    "submodules: List of submodules to initialize. Default argument initializes all submodules.\n"
+    "overwrite: Flag indicating if initialization should overwrite submodule entries.\n");
+
+static int foreach_sub_init_cb(git_submodule *submodule, const char *name, void *payload)
+{
+    return git_submodule_init(submodule, *(int*)payload);
+}
+
+PyObject *
+Repository_init_submodules(Repository* self, PyObject *args, PyObject *kwds)
+{
+    PyObject *list = Py_None;
+    PyObject *oflag = Py_False;
+    char *kwlist[] = {"submodules", "overwrite", NULL};
+    int err, fflag;
+    PyObject *iter, *subpath, *next;
+    const char *c_subpath;
+    git_submodule *submodule;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist, &list, &oflag))
+        return NULL;
+
+    fflag = PyObject_IsTrue(oflag);
+
+    if (fflag != 0 && fflag != 1)
+        fflag = 0;
+
+    //Init all submodules listed in repository
+    if (list == Py_None) {
+        err = git_submodule_foreach(self->repo, foreach_sub_init_cb, &fflag);
+        if (err != 0)
+            return Error_set(err);
+        Py_RETURN_NONE;
+    }
+
+    iter = PyObject_GetIter(list);
+    if (!iter)
+        return NULL;
+
+    while (1) {
+        next = PyIter_Next(iter);
+        if (!next)
+            break;
+
+        c_subpath = py_str_borrow_c_str(&subpath, next, NULL);
+
+        git_submodule_lookup(&submodule, self->repo, c_subpath);
+        Py_DECREF(subpath);
+        if (!submodule) {
+            PyErr_SetString(PyExc_KeyError,
+                "Submodule does not exist");
+            return NULL;
+        }
+
+        err = git_submodule_init(submodule, fflag);
+        if (err != 0) {
+            return Error_set(err);
+        }
+    }
+
+    Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(Repository_update_submodules__doc__,
+    "update_submodules(submodules=None, init=False)\n"
+    "\n"
+    "Updates the specified submodules, or all if None are specified\n"
+    "init: Flag indicating if submodules should be automatically initialized if necessary.\n");
+
+static int foreach_sub_update_cb(git_submodule *submodule, const char *name, void *payload)
+{
+    git_submodule_update_options opts = GIT_SUBMODULE_UPDATE_OPTIONS_INIT;
+    return git_submodule_update(submodule, *(int*)payload, &opts);
+}
+
+PyObject *
+Repository_update_submodules(Repository *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *list = Py_None;
+    PyObject *py_init = Py_False;
+    PyObject *iter, *next, *subpath;
+    int init, err;
+    const char *c_subpath;
+    git_submodule *submodule;
+    git_submodule_update_options opts = GIT_SUBMODULE_UPDATE_OPTIONS_INIT;
+
+    char *kwlist[] = {"submodules", "init", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist, &list, &py_init))
+        return NULL;
+
+    init = PyObject_IsTrue(py_init);
+
+    if (init != 0 && init != 1)
+        init = 0;
+
+    if (list == Py_None) {
+        err = git_submodule_foreach(self->repo, foreach_sub_update_cb, &init);
+        if (err != 0)
+            return Error_set(err);
+        Py_RETURN_NONE;
+    }
+
+    iter = PyObject_GetIter(list);
+    if (!iter)
+        return NULL;
+
+    while (1) {
+        next = PyIter_Next(iter);
+        if (!next)
+            break;
+
+        c_subpath = py_str_borrow_c_str(&subpath, next, NULL);
+
+        git_submodule_lookup(&submodule, self->repo, c_subpath);
+        Py_DECREF(subpath);
+        if (!submodule) {
+            PyErr_SetString(PyExc_KeyError,
+                "Submodule does not exist");
+            return NULL;
+        }
+
+        err = git_submodule_update(submodule, init, &opts);
+        if (err != 0) {
+            return Error_set(err);
+        }
+    }
+
+    Py_RETURN_NONE;
+}
+
 PyDoc_STRVAR(Repository_lookup_reference__doc__,
   "lookup_reference(name) -> Reference\n"
   "\n"
@@ -1300,11 +1456,13 @@ Repository_lookup_reference(Repository *self, PyObject *py_name)
 }
 
 PyDoc_STRVAR(Repository_create_reference_direct__doc__,
-  "create_reference_direct(name, target, force) -> Reference\n"
+  "create_reference_direct(name, target, force)\n"
   "\n"
   "Create a new reference \"name\" which points to an object.\n"
   "\n"
-  "Arguments:\n"
+  "Returns: Reference\n"
+  "\n"
+  "Parameters:\n"
   "\n"
   "force\n"
   "    If True references will be overridden, otherwise (the default) an\n"
@@ -1339,11 +1497,13 @@ Repository_create_reference_direct(Repository *self,  PyObject *args,
 }
 
 PyDoc_STRVAR(Repository_create_reference_symbolic__doc__,
-  "create_reference_symbolic(name, source, force) -> Reference\n"
+  "create_reference_symbolic(name, source, force)\n"
   "\n"
   "Create a new reference \"name\" which points to another reference.\n"
   "\n"
-  "Arguments:\n"
+  "Returns: Reference\n"
+  "\n"
+  "Parameters:\n"
   "\n"
   "force\n"
   "    If True references will be overridden, otherwise (the default) an\n"
@@ -1410,7 +1570,7 @@ Repository_status(Repository *self)
             path = entry->head_to_index->old_file.path;
         else
             path = entry->index_to_workdir->old_file.path;
-        status = PyLong_FromLong((long) entry->status);
+        status = PyInt_FromLong((long) entry->status);
 
         err = PyDict_SetItemString(dict, path, status);
         Py_CLEAR(status);
@@ -1452,7 +1612,7 @@ Repository_status_file(Repository *self, PyObject *value)
         free(path);
         return err_obj;
     }
-    return PyLong_FromLong(status);
+    return PyInt_FromLong(status);
 }
 
 
@@ -1623,11 +1783,20 @@ Repository_lookup_note(Repository *self, PyObject* args)
 PyDoc_STRVAR(Repository_reset__doc__,
     "reset(oid, reset_type)\n"
     "\n"
-    "Resets current head to the provided oid.\n"
-    "reset_type:\n"
-    "GIT_RESET_SOFT: resets head to point to oid, but does not modify working copy, and leaves the changes in the index.\n"
-    "GIT_RESET_MIXED: resets head to point to oid, but does not modify working copy. It empties the index too.\n"
-    "GIT_RESET_HARD: resets head to point to oid, and resets too the working copy and the content of the index.\n");
+    "Resets the current head.\n"
+    "\n"
+    "Parameters:\n"
+    "\n"
+    "oid\n"
+    "    The oid of the commit to reset to.\n"
+    "\n"
+    "reset_type\n"
+    "    * GIT_RESET_SOFT: resets head to point to oid, but does not modify\n"
+    "      working copy, and leaves the changes in the index.\n"
+    "    * GIT_RESET_MIXED: resets head to point to oid, but does not modify\n"
+    "      working copy. It empties the index too.\n"
+    "    * GIT_RESET_HARD: resets head to point to oid, and resets too the\n"
+    "      working copy and the content of the index.\n");
 
 PyObject *
 Repository_reset(Repository *self, PyObject* args)
@@ -1654,6 +1823,20 @@ Repository_reset(Repository *self, PyObject* args)
     git_object_free(target);
     if (err < 0)
         return Error_set_oid(err, &oid, len);
+    Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(Repository_free__doc__,
+  "free()\n"
+  "\n"
+  "Releases handles to the Git database without deallocating the repository.\n");
+
+PyObject *
+Repository_free(Repository *self)
+{
+    if (self->owned)
+        git_repository__cleanup(self->repo);
+
     Py_RETURN_NONE;
 }
 
@@ -1695,6 +1878,8 @@ PyMethodDef Repository_methods[] = {
     METHOD(Repository, listall_references, METH_NOARGS),
     METHOD(Repository, listall_reference_objects, METH_NOARGS),
     METHOD(Repository, listall_submodules, METH_NOARGS),
+    METHOD(Repository, init_submodules, METH_VARARGS | METH_KEYWORDS),
+    METHOD(Repository, update_submodules, METH_VARARGS | METH_KEYWORDS),
     METHOD(Repository, lookup_reference, METH_O),
     METHOD(Repository, revparse_single, METH_O),
     METHOD(Repository, status, METH_NOARGS),
@@ -1708,6 +1893,7 @@ PyMethodDef Repository_methods[] = {
     METHOD(Repository, listall_branches, METH_VARARGS),
     METHOD(Repository, create_branch, METH_VARARGS),
     METHOD(Repository, reset, METH_VARARGS),
+    METHOD(Repository, free, METH_NOARGS),
     METHOD(Repository, expand_id, METH_O),
     METHOD(Repository, _from_c, METH_VARARGS),
     METHOD(Repository, _disown, METH_NOARGS),
@@ -1729,7 +1915,7 @@ PyGetSetDef Repository_getseters[] = {
 
 
 PyDoc_STRVAR(Repository__doc__,
-  "Repository(path) -> Repository\n"
+  "Repository(backend) -> Repository\n"
   "\n"
   "Git repository.");
 

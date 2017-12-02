@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -35,6 +35,7 @@
 #include "oid.h"
 
 extern PyTypeObject TreeType;
+extern PyObject *GitError;
 
 
 PyDoc_STRVAR(Commit_message_encoding__doc__, "Message encoding.");
@@ -79,7 +80,7 @@ PyDoc_STRVAR(Commit_commit_time__doc__, "Commit time.");
 PyObject *
 Commit_commit_time__get__(Commit *commit)
 {
-    return PyLong_FromLongLong(git_commit_time(commit->commit));
+    return PyInt_FromLongLong(git_commit_time(commit->commit));
 }
 
 
@@ -88,7 +89,7 @@ PyDoc_STRVAR(Commit_commit_time_offset__doc__, "Commit time offset.");
 PyObject *
 Commit_commit_time_offset__get__(Commit *commit)
 {
-    return PyLong_FromLong(git_commit_time_offset(commit->commit));
+    return PyInt_FromLong(git_commit_time_offset(commit->commit));
 }
 
 
@@ -131,8 +132,11 @@ Commit_tree__get__(Commit *commit)
     int err;
 
     err = git_commit_tree(&tree, commit->commit);
-    if (err == GIT_ENOTFOUND)
-        Py_RETURN_NONE;
+    if (err == GIT_ENOTFOUND) {
+        char tree_id[GIT_OID_HEXSZ + 1] = { 0 };
+        git_oid_fmt(tree_id, git_commit_tree_id(commit->commit));
+        return PyErr_Format(GitError, "Unable to read tree %s", tree_id);
+    }
 
     if (err < 0)
         return Error_set(err);

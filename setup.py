@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # coding: UTF-8
 #
-# Copyright 2010-2015 The pygit2 contributors
+# Copyright 2010-2017 The pygit2 contributors
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2,
@@ -60,14 +60,6 @@ if cffi_major_version == 0:
     from _run import ffi, preamble, C_KEYWORDS
     ffi.verify(preamble, **C_KEYWORDS)
 del sys.path[0]
-
-# Python 2 support
-# See https://github.com/libgit2/pygit2/pull/180 for a discussion about this.
-# Using six isn't an option here yet, we don't necessarily have six installed
-if sys.version_info[0] == 2:
-    u = lambda s: unicode(s, 'utf-8')
-else:
-    u = str
 
 
 libgit2_bin, libgit2_include, libgit2_lib = get_libgit2_paths()
@@ -198,7 +190,7 @@ setup(name='pygit2',
       url='http://github.com/libgit2/pygit2',
       classifiers=classifiers,
       license='GPLv2 with linking exception',
-      maintainer=u('J. David Ibáñez'),
+      maintainer=u'J. David Ibáñez',
       maintainer_email='jdavid.ibp@gmail.com',
       long_description=long_description,
       packages=['pygit2'],

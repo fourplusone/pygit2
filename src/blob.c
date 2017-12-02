@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 The pygit2 contributors
+ * Copyright 2010-2017 The pygit2 contributors
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -39,20 +39,26 @@ extern PyObject *GitError;
 extern PyTypeObject BlobType;
 
 PyDoc_STRVAR(Blob_diff__doc__,
-  "diff([blob, flag, old_as_path, new_as_path]) -> Patch\n"
+  "diff([blob, flag, old_as_path, new_as_path])\n"
   "\n"
   "Directly generate a :py:class:`pygit2.Patch` from the difference\n"
   "between two blobs.\n"
   "\n"
-  ":param Blob blob: the :py:class:`~pygit2.Blob` to diff.\n"
+  "Returns: Patch.\n"
   "\n"
-  ":param flag: a GIT_DIFF_* constant.\n"
+  "Parameters:\n"
   "\n"
-  ":param str old_as_path: treat old blob as if it had this filename.\n"
+  "blob : Blob\n"
+  "    The :py:class:`~pygit2.Blob` to diff.\n"
   "\n"
-  ":param str new_as_path: treat new blob as if it had this filename.\n"
+  "flag\n"
+  "    A GIT_DIFF_* constant.\n"
   "\n"
-  ":rtype: Patch\n");
+  "old_as_path : str\n"
+  "    Treat old blob as if it had this filename.\n"
+  "\n"
+  "new_as_path : str\n"
+  "    Treat new blob as if it had this filename.\n");
 
 PyObject *
 Blob_diff(Blob *self, PyObject *args, PyObject *kwds)
@@ -80,20 +86,26 @@ Blob_diff(Blob *self, PyObject *args, PyObject *kwds)
 
 
 PyDoc_STRVAR(Blob_diff_to_buffer__doc__,
-  "diff_to_buffer([buffer, flag, old_as_path, buffer_as_path]) -> Patch\n"
+  "diff_to_buffer([buffer, flag, old_as_path, buffer_as_path])\n"
   "\n"
   "Directly generate a :py:class:`~pygit2.Patch` from the difference\n"
   "between a blob and a buffer.\n"
   "\n"
-  ":param Blob buffer: Raw data for new side of diff.\n"
+  "Returns: Patch.\n"
   "\n"
-  ":param flag: a GIT_DIFF_* constant.\n"
+  "Parameters:\n"
   "\n"
-  ":param str old_as_path: treat old blob as if it had this filename.\n"
+  "buffer : Blob\n"
+  "    Raw data for new side of diff.\n"
   "\n"
-  ":param str buffer_as_path: treat buffer as if it had this filename.\n"
+  "flag\n"
+  "    A GIT_DIFF_* constant.\n"
   "\n"
-  ":rtype: Patch\n");
+  "old_as_path : str\n"
+  "    Treat old blob as if it had this filename.\n"
+  "\n"
+  "buffer_as_path : str\n"
+  "    Treat buffer as if it had this filename.\n");
 
 PyObject *
 Blob_diff_to_buffer(Blob *self, PyObject *args, PyObject *kwds)
@@ -107,7 +119,7 @@ Blob_diff_to_buffer(Blob *self, PyObject *args, PyObject *kwds)
     char *keywords[] = {"buffer", "flag", "old_as_path", "buffer_as_path",
                         NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|s#Iss", keywords,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|z#Iss", keywords,
                                      &buffer, &buffer_len, &opts.flags,
                                      &old_as_path, &buffer_as_path))
         return NULL;
@@ -133,7 +145,7 @@ PyDoc_STRVAR(Blob_size__doc__, "Size.");
 PyObject *
 Blob_size__get__(Blob *self)
 {
-    return PyLong_FromLongLong(git_blob_rawsize(self->blob));
+    return PyInt_FromLongLong(git_blob_rawsize(self->blob));
 }
 
 
