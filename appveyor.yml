@@ -46,8 +46,7 @@ build_script:
     
     echo %LIBGIT2_NAME%
     
-    IF NOT EXIST "%LIBGIT2_NAME%" ( mkdir %LIBGIT2_NAME%; cd %LIBGIT2_NAME%; cmake -DSTDCALL=OFF -DBUILD_CLAR=OFF -DCMAKE_INSTALL_PREFIX="%LIBGIT2%" "%APPVEYOR_BUILD_FOLDER%\..\libgit2" -G "%GENERATOR%"; cmake --build . --config Release --target install; cd ..
-    )
+    IF NOT EXIST "%LIBGIT2_NAME%" ( mkdir %LIBGIT2_NAME%; cd %LIBGIT2_NAME%; cmake -DSTDCALL=OFF -DBUILD_CLAR=OFF -DCMAKE_INSTALL_PREFIX="%LIBGIT2%" "%APPVEYOR_BUILD_FOLDER%\..\libgit2" -G "%GENERATOR%"; cmake --build . --config Release --target install; cd ..)
         
     IF "%GENERATOR%"=="Visual Studio 10 Win64" ( call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" )
     
